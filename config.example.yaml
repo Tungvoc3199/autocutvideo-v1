@@ -1,0 +1,28 @@
+min_segment_duration: 0.5
+analysis_window_sec: 1.0
+realism_threshold: 62.0
+critical_failure_threshold: 80.0
+trim_padding_ms: 120
+target_resolution: "1920x1080"
+target_fps: 30
+target_aspect_ratio: "16:9"
+transition_type: "auto"
+transition_duration: 0.2
+audio_normalization: true
+max_workers: 4
+resume_from_log: true
+review_queue_enabled: true
+weights:
+  sharpness: 0.08
+  blur: 0.08
+  flicker: 0.10
+  motion_stability: 0.10
+  duplication: 0.10
+  exposure_stability: 0.08
+  color_consistency: 0.08
+  face_consistency: 0.10
+  hand_artifact_risk: 0.07
+  body_deformation_risk: 0.07
+  object_warp_risk: 0.07
+  lip_sync_risk: 0.04
+  continuity_potential: 0.03
