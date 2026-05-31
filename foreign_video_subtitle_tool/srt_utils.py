@@ -7,10 +7,20 @@ from pathlib import Path
 from .models import SubtitleEntry
 
 TIMESTAMP_RE = re.compile(r"^(\d{2}:\d{2}:\d{2},\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2},\d{3})")
+FENCED_SRT_RE = re.compile(r"^```(?:srt|text)?\s*\n(?P<body>.*?)(?:\n```)?$", re.IGNORECASE | re.DOTALL)
+
+
+def strip_srt_markdown_fence(text: str) -> str:
+    """Return raw SRT when a model wraps it in a Markdown code fence."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    match = FENCED_SRT_RE.match(normalized)
+    if match:
+        return match.group("body").strip()
+    return normalized
 
 
 def parse_srt(text: str) -> list[SubtitleEntry]:
-    normalized = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    normalized = strip_srt_markdown_fence(text)
     if not normalized:
         return []
     entries: list[SubtitleEntry] = []

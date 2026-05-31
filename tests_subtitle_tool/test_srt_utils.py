@@ -19,3 +19,10 @@ def test_timestamp_and_wrap():
 
 def test_serialize_empty():
     assert serialize_srt([]) == ""
+
+
+def test_parse_srt_accepts_common_markdown_fence():
+    text = "```srt\n1\n00:00:01,000 --> 00:00:03,500\nXin chào\n```"
+    entries = parse_srt(text)
+    assert len(entries) == 1
+    assert entries[0].text == "Xin chào"
