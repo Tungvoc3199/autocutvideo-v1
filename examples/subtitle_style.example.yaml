@@ -1,0 +1,9 @@
+font_name: Arial
+font_size: 24
+primary_colour: "&H00FFFFFF"
+outline_colour: "&H00000000"
+outline: 3
+shadow: 0
+alignment: 2
+margin_v: 56
+bold: 0
