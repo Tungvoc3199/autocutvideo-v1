@@ -85,3 +85,63 @@ def test_manual_resume_rejects_mismatched_vietnamese_srt_before_render(tmp_path:
     with pytest.raises(ValueError):
         run_pipeline(ToolOptions(input_path=video, output_dir=tmp_path / "output", translation_mode="manual"))
     assert not render_called
+
+
+def test_job_id_changes_when_same_path_file_content_fingerprint_changes(tmp_path: Path):
+    from foreign_video_subtitle_tool.pipeline import make_job_id
+
+    video = tmp_path / "same.mp4"
+    video.write_bytes(b"first")
+    first_id = make_job_id(video)
+    video.write_bytes(b"second larger")
+    second_id = make_job_id(video)
+    assert first_id != second_id
+
+
+def test_failed_stage_is_persisted_to_state_and_report(tmp_path: Path, monkeypatch):
+    video = tmp_path / "input.mp4"
+    video.write_bytes(b"fake")
+
+    def fake_metadata(input_path, paths):
+        paths.input_metadata.write_text('{"source_path":"' + str(input_path) + '"}', encoding="utf-8")
+        return {}
+
+    def fail_extract(input_path, output_wav, log_file=None):
+        raise RuntimeError("ffmpeg failed")
+
+    monkeypatch.setattr("foreign_video_subtitle_tool.pipeline.write_input_metadata", fake_metadata)
+    monkeypatch.setattr("foreign_video_subtitle_tool.pipeline.extract_audio", fail_extract)
+
+    with pytest.raises(RuntimeError, match="ffmpeg failed"):
+        run_pipeline(ToolOptions(input_path=video, output_dir=tmp_path / "output"))
+
+    paths = next((tmp_path / "output").iterdir())
+    state = load_state(paths / "state.json")
+    assert state["stages"]["audio"]["status"] == "failed"
+    assert "ffmpeg failed" in state["stages"]["audio"]["detail"]
+    report = (paths / "report.json").read_text(encoding="utf-8")
+    assert '"status": "failed"' in report
+    assert '"failed_stage": "audio"' in report
+
+
+def test_batch_continues_after_one_job_fails(tmp_path: Path, monkeypatch):
+    from foreign_video_subtitle_tool.pipeline import batch_run
+
+    good = tmp_path / "good.mp4"
+    bad = tmp_path / "bad.mp4"
+    good.write_bytes(b"good")
+    bad.write_bytes(b"bad")
+
+    def fake_run_pipeline(options):
+        if options.input_path == bad:
+            raise RuntimeError("bad video")
+        job_dir = options.output_dir / "good_job"
+        job_dir.mkdir(parents=True, exist_ok=True)
+        return type("Paths", (), {"job_dir": job_dir})()
+
+    monkeypatch.setattr("foreign_video_subtitle_tool.pipeline.run_pipeline", fake_run_pipeline)
+    result = batch_run(tmp_path, ToolOptions(output_dir=tmp_path / "output"))
+    assert len(result.succeeded) == 1
+    assert len(result.failed) == 1
+    assert result.has_failures
+    assert result.failed[0].input_path == bad

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from .config import DEFAULT_OUTPUT_DIR
-from .doctor import check_environment, format_doctor_report
+from .doctor import REQUIRED_CHECKS, check_environment, format_doctor_report
 from .models import ToolOptions
 from .pipeline import batch_run, resume_job, run_pipeline
 
@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         checks = check_environment()
         print(format_doctor_report(checks))
-        return 0 if all(check.ok for check in checks if check.name in {"ffmpeg", "ffprobe"}) else 2
+        return 0 if all(check.ok for check in checks if check.name in REQUIRED_CHECKS) else 2
     try:
         if args.command == "run":
             paths = run_pipeline(options_from_args(args, input_path=args.input))
@@ -79,11 +79,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"State: {paths.state}")
             return 0
         if args.command == "batch":
-            jobs = batch_run(args.input_dir, options_from_args(args))
-            print(f"Đã tạo/chạy {len(jobs)} job.")
-            for job in jobs:
-                print(job.job_dir)
-            return 0
+            result = batch_run(args.input_dir, options_from_args(args))
+            print(
+                f"Batch summary: success={len(result.succeeded)} "
+                f"failed={len(result.failed)} skipped={len(result.skipped)} total={len(result)}"
+            )
+            for item in result.items:
+                suffix = f" -> {item.job_dir}" if item.job_dir else ""
+                error = f" | Lỗi: {item.error}" if item.error else ""
+                print(f"[{item.status}] {item.input_path}{suffix}{error}")
+            return 1 if result.has_failures else 0
     except Exception as exc:  # user-facing CLI boundary, not import handling
         print(f"Lỗi: {exc}", file=sys.stderr)
         return 1

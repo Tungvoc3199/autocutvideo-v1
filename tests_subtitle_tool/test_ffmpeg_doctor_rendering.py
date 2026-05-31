@@ -44,3 +44,22 @@ def test_doctor_behavior_with_mocked_binaries_and_packages(monkeypatch):
     assert all(check.ok for check in checks)
     report = format_doctor_report(checks)
     assert "[OK] ffmpeg" in report
+
+
+def test_burn_subtitles_transcodes_audio_to_aac_for_mp4(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.rendering.require_binary", lambda name: name)
+    command = burn_subtitles_command(Path("input.webm"), Path("vi.srt"), Path("final.mp4"), SubtitleStyle())
+    assert command[command.index("-c:a") + 1] == "aac"
+    assert command[command.index("-b:a") + 1] == "192k"
+    assert command[command.index("-movflags") + 1] == "+faststart"
+
+
+def test_doctor_requires_faster_whisper_for_success_exit_logic(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.doctor.find_binary", lambda name: f"C:/ffmpeg/bin/{name}.exe")
+    monkeypatch.setattr(
+        "foreign_video_subtitle_tool.doctor.importlib.util.find_spec",
+        lambda name: None if name == "faster_whisper" else object(),
+    )
+    checks = check_environment()
+    assert not next(check for check in checks if check.name == "faster_whisper").ok
+    assert "faster_whisper" in format_doctor_report(checks)

@@ -34,6 +34,24 @@ def validate_translation(original: list[SubtitleEntry], translated: list[Subtitl
     for source, target in zip(original, translated, strict=True):
         if source.index != target.index or source.start != target.start or source.end != target.end:
             raise ValueError(f"Bản dịch không giữ nguyên index/timestamp tại subtitle #{source.index}.")
+        if source.text.strip() and not target.text.strip():
+            raise ValueError(f"Bản dịch thiếu nội dung tại subtitle #{source.index}.")
+
+
+def load_dotenv_file(env_path: Path | None = None) -> None:
+    """Load simple KEY=VALUE pairs from .env without overriding existing environment values."""
+    path = env_path or Path.cwd() / ".env"
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 def normalize_translated_entries(entries: list[SubtitleEntry]) -> list[SubtitleEntry]:
@@ -53,6 +71,7 @@ def validate_and_normalize_srt_files(original_srt: Path, translated_srt: Path) -
 def translate_openai(
     original_entries: list[SubtitleEntry], output_srt: Path, batch_size: int = 40
 ) -> list[SubtitleEntry]:
+    load_dotenv_file()
     api_key = os.environ.get("OPENAI_API_KEY")
     model_name = os.environ.get("OPENAI_MODEL")
     if not api_key:

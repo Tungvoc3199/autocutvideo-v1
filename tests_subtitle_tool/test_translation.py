@@ -58,3 +58,10 @@ def test_validate_and_normalize_srt_files_rejects_manual_timestamp_change(tmp_pa
     translated_srt.write_text("1\n00:00:00,100 --> 00:00:02,000\nXin chào\n", encoding="utf-8")
     with pytest.raises(ValueError):
         validate_and_normalize_srt_files(original_srt, translated_srt)
+
+
+def test_validate_translation_rejects_empty_target_text_when_source_has_text():
+    original = [SubtitleEntry(1, "00:00:00,000", "00:00:01,000", "Hello")]
+    translated = [SubtitleEntry(1, "00:00:00,000", "00:00:01,000", "")]
+    with pytest.raises(ValueError, match="thiếu nội dung"):
+        validate_translation(original, translated)
