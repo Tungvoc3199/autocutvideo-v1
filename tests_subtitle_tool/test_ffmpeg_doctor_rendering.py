@@ -44,3 +44,49 @@ def test_doctor_behavior_with_mocked_binaries_and_packages(monkeypatch):
     assert all(check.ok for check in checks)
     report = format_doctor_report(checks)
     assert "[OK] ffmpeg" in report
+
+
+def test_burn_subtitles_command_transcodes_mp4_audio_and_faststart(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.rendering.require_binary", lambda name: name)
+    command = burn_subtitles_command(Path("input.webm"), Path("vi.srt"), Path("final.mp4"), SubtitleStyle())
+    assert command[command.index("-c:a") + 1] == "aac"
+    assert command[command.index("-b:a") + 1] == "192k"
+    assert command[command.index("-movflags") + 1] == "+faststart"
+    assert "copy" not in command
+
+
+def test_escape_subtitle_path_for_filter_handles_apostrophe(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.rendering.require_binary", lambda name: name)
+    command = burn_subtitles_command(
+        Path("input.mp4"),
+        Path(r"C:\Users\O'Connor\Job Folder\vietnamese.srt"),
+        Path("final.mp4"),
+        SubtitleStyle(),
+    )
+    vf = command[command.index("-vf") + 1]
+    assert "O'\\''Connor" in vf
+
+
+def test_doctor_report_marks_faster_whisper_required(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.doctor.find_binary", lambda name: f"C:/ffmpeg/bin/{name}.exe")
+    monkeypatch.setattr(
+        "foreign_video_subtitle_tool.doctor.importlib.util.find_spec",
+        lambda name: None if name == "faster_whisper" else object(),
+    )
+    checks = check_environment()
+    report = format_doctor_report(checks)
+    assert any(check.name == "faster_whisper" and not check.ok for check in checks)
+    assert "Lỗi bắt buộc" in report
+
+
+def test_cli_doctor_exits_nonzero_without_required_faster_whisper(monkeypatch, capsys):
+    from foreign_video_subtitle_tool.cli import main
+
+    monkeypatch.setattr("foreign_video_subtitle_tool.doctor.find_binary", lambda name: f"C:/ffmpeg/bin/{name}.exe")
+    monkeypatch.setattr(
+        "foreign_video_subtitle_tool.doctor.importlib.util.find_spec",
+        lambda name: None if name == "faster_whisper" else object(),
+    )
+
+    assert main(["doctor"]) == 2
+    assert "faster_whisper" in capsys.readouterr().out

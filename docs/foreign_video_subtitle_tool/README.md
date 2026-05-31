@@ -34,7 +34,7 @@ python -m foreign_video_subtitle_tool.cli resume --job "output\<job_id>"
 
 ## Chạy OpenAI mode (tuỳ chọn)
 
-Tạo biến môi trường, không commit secret:
+Tạo biến môi trường hoặc file `.env` local, không commit secret. OpenAI mode sẽ đọc `.env` dạng `KEY=VALUE` nếu biến chưa có sẵn trong process environment:
 
 ```powershell
 $env:OPENAI_API_KEY="sk-..."
@@ -78,5 +78,21 @@ output/<job_id>/
 - `Không tìm thấy ffmpeg/ffprobe`: cài FFmpeg, thêm thư mục `bin` vào `PATH`, mở terminal mới.
 - `Chưa cài faster-whisper`: chạy `python -m pip install -r requirements-subtitle-tool.txt`.
 - OpenAI mode báo thiếu key/model: kiểm tra `OPENAI_API_KEY` và `OPENAI_MODEL`.
-- `vietnamese.srt` bị từ chối khi `resume`: kiểm tra bản dịch có giữ nguyên 100% số thứ tự và timestamp từ `original.srt`; tool sẽ tự bỏ code fence Markdown phổ biến và wrap lại dòng phụ đề nếu timestamp hợp lệ.
+- `vietnamese.srt` bị từ chối khi `resume`: kiểm tra bản dịch có giữ nguyên 100% số thứ tự/timestamp từ `original.srt` và không để trống nội dung ở bất kỳ cue nào; tool sẽ tự bỏ code fence Markdown phổ biến và wrap lại dòng phụ đề nếu timestamp hợp lệ.
+- Cache/resume: job id bao gồm đường dẫn tuyệt đối, kích thước file và `mtime_ns`, nên thay video mới vào cùng path sẽ tạo job folder mới thay vì tái dùng phụ đề cũ.
+- Nếu một stage lỗi, `state.json`, `report.json`, và `logs/run.log` sẽ ghi stage `failed`, loại lỗi, message và timestamp để lần resume kế tiếp retry đúng stage lỗi.
+- Batch mode tiếp tục xử lý video còn lại khi một job lỗi và trả exit code khác 0 nếu có bất kỳ failure nào.
 - Phụ đề lỗi font tiếng Việt: chỉnh `font_name` trong YAML style sang font có sẵn trên máy Windows, ví dụ Arial hoặc Segoe UI.
+
+## CI và smoke test Windows
+
+CI tối thiểu chạy `python -m compileall foreign_video_subtitle_tool` và `python -m pytest -q tests_subtitle_tool` trên GitHub Actions. Checklist cần chạy thủ công trên Windows 11 khi có FFmpeg/model thật:
+
+- MP4/AAC render end-to-end.
+- WebM/Opus render sang MP4 với audio AAC.
+- MKV input.
+- Đường dẫn có dấu cách.
+- Đường dẫn có ký tự tiếng Việt.
+- Manual resume với `vietnamese.srt` hợp lệ.
+- Manual resume với SRT malformed/thiếu nội dung để xác nhận bị reject.
+- Mixed batch success/failure để xác nhận batch tiếp tục và summary đúng.

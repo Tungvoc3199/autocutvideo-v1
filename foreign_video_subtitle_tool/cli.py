@@ -66,7 +66,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         checks = check_environment()
         print(format_doctor_report(checks))
-        return 0 if all(check.ok for check in checks if check.name in {"ffmpeg", "ffprobe"}) else 2
+        required = {"ffmpeg", "ffprobe", "faster_whisper"}
+        return 0 if all(check.ok for check in checks if check.name in required) else 2
     try:
         if args.command == "run":
             paths = run_pipeline(options_from_args(args, input_path=args.input))
@@ -79,11 +80,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"State: {paths.state}")
             return 0
         if args.command == "batch":
-            jobs = batch_run(args.input_dir, options_from_args(args))
-            print(f"Đã tạo/chạy {len(jobs)} job.")
-            for job in jobs:
-                print(job.job_dir)
-            return 0
+            summary = batch_run(args.input_dir, options_from_args(args))
+            print(
+                "Batch summary: "
+                f"success={len(summary.succeeded)} "
+                f"failed={len(summary.failed)} "
+                f"skipped={len(summary.skipped)}"
+            )
+            for result in summary.results:
+                location = result.job_dir or result.input_path
+                suffix = f" - {result.error}" if result.error else ""
+                print(f"[{result.status}] {location}{suffix}")
+            return 1 if summary.has_failures else 0
     except Exception as exc:  # user-facing CLI boundary, not import handling
         print(f"Lỗi: {exc}", file=sys.stderr)
         return 1

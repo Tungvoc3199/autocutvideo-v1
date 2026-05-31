@@ -21,17 +21,22 @@ def load_style(path: Path | None) -> SubtitleStyle:
     return SubtitleStyle(**filtered)
 
 
+def escape_ffmpeg_single_quoted_value(value: str) -> str:
+    """Wrap a filter value using FFmpeg single-quote escaping rules."""
+    return "'" + value.replace("'", r"'\''") + "'"
+
+
 def escape_subtitle_path_for_filter(path: Path) -> str:
     value = str(path).replace("\\", "/")
-    value = value.replace("'", r"\'").replace(":", r"\:")
-    return value
+    return value.replace(":", r"\:")
 
 
 def burn_subtitles_command(
     input_video: Path, vietnamese_srt: Path, output_video: Path, style: SubtitleStyle
 ) -> list[str]:
-    subtitles_path = escape_subtitle_path_for_filter(vietnamese_srt)
-    vf = f"subtitles='{subtitles_path}':force_style='{style.to_force_style()}'"
+    subtitles_path = escape_ffmpeg_single_quoted_value(escape_subtitle_path_for_filter(vietnamese_srt))
+    force_style = escape_ffmpeg_single_quoted_value(style.to_force_style())
+    vf = f"subtitles={subtitles_path}:force_style={force_style}"
     return [
         require_binary("ffmpeg"),
         "-y",
@@ -39,8 +44,18 @@ def burn_subtitles_command(
         str(input_video),
         "-vf",
         vf,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "20",
         "-c:a",
-        "copy",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
         str(output_video),
     ]
 

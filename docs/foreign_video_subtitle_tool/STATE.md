@@ -8,10 +8,11 @@ Implemented baseline v1 package under `foreign_video_subtitle_tool/` with CLI, p
 
 - `doctor`, `run`, `resume`, `batch` commands.
 - Manual and optional OpenAI translation paths.
-- FFmpeg audio extraction and subtitle burn command construction.
+- FFmpeg audio extraction and subtitle burn command construction with MP4 H.264/AAC output and `+faststart`.
 - faster-whisper transcription integration guarded by dependency checks.
-- `state.json`, `report.json`, logs and deterministic job folders.
-- Unit tests for SRT, translation batching, resume/skip logic, doctor, FFmpeg command construction, manual stop behavior, fenced SRT parsing, and manual translation timestamp validation.
+- `state.json`, `report.json`, logs, failed-stage persistence, batch continuation summaries, and deterministic fingerprinted job folders.
+- Unit tests for SRT, translation batching, resume/skip logic, doctor, FFmpeg command construction, manual stop behavior, fenced SRT parsing, empty translation rejection, input fingerprinting, failed reports, and mixed batch continuation.
+- GitHub Actions CI workflow for compileall and pytest.
 
 ## Pending items
 

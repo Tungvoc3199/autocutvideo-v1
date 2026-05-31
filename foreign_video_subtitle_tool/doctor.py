@@ -41,6 +41,8 @@ def format_doctor_report(checks: list[CheckResult]) -> str:
     for check in checks:
         status = "OK" if check.ok else "FAIL"
         lines.append(f"[{status}] {check.name}: {check.detail}")
-    if not all(check.ok for check in checks if check.name in {"ffmpeg", "ffprobe"}):
-        lines.append("Lỗi bắt buộc: FFmpeg/FFprobe chưa sẵn sàng. Hãy cài trước khi chạy pipeline.")
+    required = {"ffmpeg", "ffprobe", "faster_whisper"}
+    if not all(check.ok for check in checks if check.name in required):
+        lines.append("Lỗi bắt buộc: FFmpeg/FFprobe/faster-whisper chưa sẵn sàng. Hãy cài trước khi chạy pipeline.")
+    lines.append("Tuỳ chọn: openai chỉ cần cho OpenAI mode; PyYAML chỉ cần khi dùng --subtitle-style YAML.")
     return "\n".join(lines)
