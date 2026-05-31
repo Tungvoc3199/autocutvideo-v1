@@ -1,0 +1,14 @@
+# Doctor
+python -m foreign_video_subtitle_tool.cli doctor
+
+# Manual mode: transcribe and create translate_prompt.txt
+python -m foreign_video_subtitle_tool.cli run --input "input/video.mp4" --translation-mode manual
+
+# Resume after placing vietnamese.srt into output/<job_id>/
+python -m foreign_video_subtitle_tool.cli resume --job "output/<job_id>"
+
+# Optional OpenAI mode
+python -m foreign_video_subtitle_tool.cli run --input "input/video.mp4" --translation-mode openai
+
+# Batch manual mode
+python -m foreign_video_subtitle_tool.cli batch --input-dir "input" --translation-mode manual
