@@ -71,7 +71,11 @@ class BatchRunResult:
 
     @property
     def jobs(self) -> list[JobPaths]:
-        return [JobPaths.from_job_dir(item.job_dir) for item in self.items if item.job_dir is not None]
+        return [
+            JobPaths.from_job_dir(item.job_dir)
+            for item in self.items
+            if item.status == "success" and item.job_dir is not None
+        ]
 
     def __len__(self) -> int:
         return len(self.items)
@@ -269,7 +273,10 @@ def validate_resume_source(metadata: dict[str, Any], source_path: Path) -> Input
     current = input_fingerprint(source_path)
     stored = metadata.get("input_fingerprint")
     if not isinstance(stored, dict) or "content_sha256" not in stored:
-        return current
+        raise ValueError(
+            "Metadata job cũ thiếu input_fingerprint.content_sha256 nên không thể resume an toàn. "
+            "Hãy chạy lệnh run mới để tạo job mới thay vì resume artifact cũ."
+        )
     if stored.get("resolved_path") != current.resolved_path or stored.get("content_sha256") != current.content_sha256:
         raise ValueError(
             "Video gốc đã thay đổi nội dung từ khi tạo job. "

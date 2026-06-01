@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from foreign_video_subtitle_tool.pipeline import input_fingerprint, resume_job, run_pipeline
+from foreign_video_subtitle_tool.pipeline import input_fingerprint, resume_job, run_pipeline, validate_resume_source
 from foreign_video_subtitle_tool.models import ToolOptions
 from foreign_video_subtitle_tool.state import COMPLETED, load_state, mark_stage, stage_complete
 
@@ -167,6 +167,21 @@ def test_manual_resume_rejects_changed_source_content(tmp_path: Path, monkeypatc
         resume_job(paths.job_dir, ToolOptions(translation_mode="manual"))
 
 
+def test_validate_resume_source_rejects_legacy_metadata_without_content_sha256(tmp_path: Path):
+    video = tmp_path / "input.mp4"
+    video.write_bytes(b"original")
+    legacy_metadata = {
+        "input_fingerprint": {
+            "resolved_path": str(video.resolve()),
+            "size_bytes": video.stat().st_size,
+            "mtime_ns": video.stat().st_mtime_ns,
+        }
+    }
+
+    with pytest.raises(ValueError, match=r"thiếu input_fingerprint\.content_sha256.*chạy lệnh run mới"):
+        validate_resume_source(legacy_metadata, video)
+
+
 def test_failed_stage_is_persisted_to_state_and_report(tmp_path: Path, monkeypatch):
     video = tmp_path / "input.mp4"
     video.write_bytes(b"fake")
@@ -210,3 +225,20 @@ def test_batch_continues_after_one_job_fails(tmp_path: Path, monkeypatch):
     assert len(result.failed) == 1
     assert result.has_failures
     assert result.failed[0].input_path == bad
+
+
+def test_batch_jobs_and_iteration_exclude_failed_jobs(tmp_path: Path):
+    from foreign_video_subtitle_tool.pipeline import BatchItemResult, BatchRunResult
+
+    successful_job = tmp_path / "successful_job"
+    failed_job = tmp_path / "failed_job"
+    result = BatchRunResult(
+        [
+            BatchItemResult(tmp_path / "good.mp4", successful_job, "success"),
+            BatchItemResult(tmp_path / "bad.mp4", failed_job, "failed", "bad video"),
+            BatchItemResult(tmp_path / "missing-job-dir.mp4", None, "success"),
+        ]
+    )
+
+    assert [job.job_dir for job in result.jobs] == [successful_job]
+    assert [job.job_dir for job in list(result)] == [successful_job]

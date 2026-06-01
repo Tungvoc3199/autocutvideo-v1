@@ -23,7 +23,7 @@ def load_style(path: Path | None) -> SubtitleStyle:
 
 def escape_subtitle_path_for_filter(path: Path) -> str:
     value = str(path).replace("\\", "/")
-    value = value.replace("'", r"\'").replace(":", r"\:")
+    value = value.replace("'", r"'\''").replace(":", r"\:")
     return value
 
 

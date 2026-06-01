@@ -39,6 +39,29 @@ def test_escape_subtitle_path_for_filter_windows_drive():
     assert "/" in escaped
 
 
+def test_escape_subtitle_path_for_filter_windows_drive_and_apostrophe():
+    escaped = escape_subtitle_path_for_filter(Path(r"C:\Users\O'Connor\Job Folder\vietnamese.srt"))
+    assert escaped == r"C\:/Users/O'\''Connor/Job Folder/vietnamese.srt"
+
+
+def test_burn_subtitles_command_escapes_windows_drive_and_apostrophe_in_vf(monkeypatch):
+    monkeypatch.setattr("foreign_video_subtitle_tool.rendering.require_binary", lambda name: name)
+    style = SubtitleStyle()
+    command = burn_subtitles_command(
+        Path(r"C:\Input Videos\clip one.mp4"),
+        Path(r"C:\Users\O'Connor\Job Folder\vietnamese.srt"),
+        Path(r"C:\Job Folder\final.mp4"),
+        style,
+    )
+
+    vf = command[command.index("-vf") + 1]
+    assert vf == (
+        r"subtitles='C\:/Users/O'\''Connor/Job Folder/vietnamese.srt':force_style='"
+        + style.to_force_style()
+        + "'"
+    )
+
+
 def test_doctor_behavior_with_mocked_binaries_and_packages(monkeypatch):
     monkeypatch.setattr("foreign_video_subtitle_tool.doctor.find_binary", lambda name: f"C:/ffmpeg/bin/{name}.exe")
     monkeypatch.setattr("foreign_video_subtitle_tool.doctor.importlib.util.find_spec", lambda name: object())
